@@ -10,6 +10,8 @@ async function generateIncidentCode() {
   return codIncidenteFormato;
 }
 
+
+/*
 export const crearIncidencia = async (req, res) => {
   try {
     const token = req.cookies.token;
@@ -59,6 +61,41 @@ export const crearIncidencia = async (req, res) => {
       .json({ error: "Error interno del servidor", message: error.message });
   }
 };
+*/
+
+export const crearIncidencia = async (req, res) => {
+  try {
+    const usuario = await prisma.t_usuarios.findFirst({
+      where: { cn_cod_usuario: req.usuario.id },
+    });
+
+    if (!usuario) {
+      return res.status(401).json({ error: "Usuario no encontrado" });
+    }
+
+    const codIncidenteFormato = await generateIncidentCode();
+    const nuevaIncidencia = await prisma.t_incidencias.create({
+      data: {
+        ct_cod_incidencia: codIncidenteFormato,
+        ct_titulo: req.body.ct_titulo,
+        ct_descripcion: req.body.ct_descripcion,
+        ct_lugar: req.body.ct_lugar,
+        cn_cod_usuario: usuario.cn_cod_usuario,
+        cn_cod_estado: 1,
+      },
+    });
+    return res.status(201).json({
+      message: "Incidencia creada exitosamente",
+      incidencia: nuevaIncidencia,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: "Error al crear la incidencia",
+      message: error.message,
+    });
+  }
+};
+
 
 export const getIncidenciasXusuario = async (req, res) => {
   try {
