@@ -10,7 +10,6 @@ async function generateIncidentCode() {
   return codIncidenteFormato;
 }
 
-
 /*
 export const crearIncidencia = async (req, res) => {
   try {
@@ -96,7 +95,6 @@ export const crearIncidencia = async (req, res) => {
   }
 };
 
-
 export const getIncidenciasXusuario = async (req, res) => {
   try {
     const incidencias = await prisma.t_incidencias.findMany({
@@ -141,4 +139,125 @@ export const getIncidencia = async (req, res) => {
       estado: incidencia.t_estados?.ct_descripcion,
     });
   } catch (error) {}
+};
+
+export const getIncidenciaRegistradas = async (req, res) => {
+  try {
+    const incidencias = await prisma.t_incidencias.findMany({
+      where: {
+        cn_cod_estado: 1,
+      },
+      include: {
+        t_usuarios: true,
+      },
+    });
+    if (!incidencias) {
+      return res.status(400).json({ message: "No hay incidencias" });
+    }
+    return res.status(200).json(incidencias);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const getIncidenciasAsignadas = async (req, res) => {
+  try {
+    const usuariosId = req.usuario.id;
+
+    /*
+    const incidenciasAsignadas = await prisma.t_asignacionesIncidencias.findMany({
+      where: { cn_cod_usuario: usuariosId },
+      include: {
+        t_incidencias: true
+      }
+    })
+      */
+
+    const usuarioConIncidencias = await prisma.t_usuarios.findFirst({
+      where: { cn_cod_usuario: usuariosId },
+      include: {
+        t_asignacionesIncidencias: {
+          include: {
+            t_incidencias: true,
+          },
+        },
+      },
+    });
+
+    if (
+      !usuarioConIncidencias ||
+      usuarioConIncidencias.t_asignacionesIncidencias.length === 0
+    ) {
+      return res
+        .status(400)
+        .json({ message: "No tienes incidencias asignadas" });
+    }
+
+    const incidencias = usuarioConIncidencias.t_asignacionesIncidencias.map(
+      (asignacion) => asignacion.t_incidencias
+    );
+
+    return res.status(200).json(incidencias);
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({ message: "Error interno del servidor" });
+  }
+};
+
+export const actualizarEstadoRevision = async (req, res) => {
+  try {
+    const { ct_cod_incidencia } = req.params;
+    const incidencia = await prisma.t_incidencias.findFirst({
+      where: {
+        ct_cod_incidencia,
+      },
+    });
+    if (!incidencia) {
+      return res.status(404).json({ message: "Incidencia no encontrada" });
+    }
+    const incidenciaActualizada = await prisma.t_incidencias.update({
+      where: {
+        ct_cod_incidencia,
+      },
+      data: {
+        cn_cod_estado: 3,
+      },
+    });
+    return res.status(200).json({
+      message: "Estado de la incidencia actualizado correctamente",
+      incidencia: incidenciaActualizada,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Error interno del servidor" });
+  }
+};
+
+export const actualizarEstadoReparacion = async (req, res) => {
+  try {
+    const { ct_cod_incidencia } = req.params;
+    const incidencia = await prisma.t_incidencias.findFirst({
+      where: {
+        ct_cod_incidencia,
+      },
+    });
+    if (!incidencia) {
+      return res.status(404).json({ message: "Incidencia no encontrada" });
+    }
+    const incidenciaActualizada = await prisma.t_incidencias.update({
+      where: {
+        ct_cod_incidencia,
+      },
+      data: {
+        cn_cod_estado: 4,
+      },
+    });
+    return res.status(200).json({
+      message: "Estado de la incidencia actualizado correctamente",
+      incidencia: incidenciaActualizada,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Error interno del servidor" });
+  }
 };

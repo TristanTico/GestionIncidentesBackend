@@ -22,6 +22,7 @@ export const login = async (req, res) => {
     const token = await crearToken({
       id: usuario.cn_cod_usuario,
       nombre: usuario.ct_nombre,
+      correo : usuario.ct_correo,
     });
 
     res.cookie("token", token);
@@ -32,6 +33,7 @@ export const login = async (req, res) => {
       nombre: usuario.ct_nombre,
       correo: usuario.ct_correo,
       departamento: usuario.t_departamento?.ct_descripcion,
+      token : token
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
