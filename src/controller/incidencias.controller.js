@@ -151,7 +151,7 @@ export const getIncidenciaRegistradas = async (req, res) => {
         t_usuarios: true,
       },
     });
-    if (!incidencias) {
+    if (!incidencias || incidencias.length === 0) {
       return res.status(400).json({ message: "No hay incidencias" });
     }
     return res.status(200).json(incidencias);
@@ -159,6 +159,7 @@ export const getIncidenciaRegistradas = async (req, res) => {
     console.log(error);
   }
 };
+
 
 export const getIncidenciasAsignadas = async (req, res) => {
   try {
@@ -203,6 +204,8 @@ export const getIncidenciasAsignadas = async (req, res) => {
     return res.status(500).json({ message: "Error interno del servidor" });
   }
 };
+
+
 
 export const actualizarEstadoRevision = async (req, res) => {
   try {
