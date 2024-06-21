@@ -113,9 +113,10 @@ export const getIncidenciasXusuario = async (req, res) => {
 
 export const getIncidencia = async (req, res) => {
   try {
+    const { ct_cod_incidencia } = req.params;
     const incidencia = await prisma.t_incidencias.findFirst({
       where: {
-        ct_cod_incidencia: req.params.ct_cod_incidencia,
+        ct_cod_incidencia,
       },
       include: {
         t_estados: true,
@@ -159,7 +160,6 @@ export const getIncidenciaRegistradas = async (req, res) => {
     console.log(error);
   }
 };
-
 
 export const getIncidenciasAsignadas = async (req, res) => {
   try {
@@ -205,8 +205,6 @@ export const getIncidenciasAsignadas = async (req, res) => {
   }
 };
 
-
-
 export const actualizarEstadoRevision = async (req, res) => {
   try {
     const { ct_cod_incidencia } = req.params;
@@ -239,14 +237,41 @@ export const actualizarEstadoRevision = async (req, res) => {
 export const actualizarEstadoReparacion = async (req, res) => {
   try {
     const { ct_cod_incidencia } = req.params;
-    const incidencia = await prisma.t_incidencias.findFirst({
+    const usuariosId = req.usuario.id; // Asumiendo que tienes el ID del usuario autenticado en `req.usuario.id`
+
+    // Verificar si el usuario ya tiene una incidencia asignada en estado 4
+    const incidenciaEnReparacion = await prisma.t_asignacionesIncidencias.findFirst({
       where: {
-        ct_cod_incidencia,
+        cn_cod_usuario: usuariosId,
+        t_incidencias: {
+          cn_cod_estado: 4,
+        },
+      },
+      include: {
+        t_incidencias: true,
       },
     });
-    if (!incidencia) {
-      return res.status(404).json({ message: "Incidencia no encontrada" });
+
+    if (incidenciaEnReparacion) {
+      return res.status(400).json({ message: "Ya tienes una incidencia en estado de reparación" });
     }
+
+    // Verificar si la incidencia que se quiere actualizar existe y está asignada al usuario autenticado
+    const incidenciaAsignada = await prisma.t_asignacionesIncidencias.findFirst({
+      where: {
+        ct_cod_incidencia,
+        cn_cod_usuario: usuariosId, // Asegurarse de que la incidencia está asignada al usuario autenticado
+      },
+      include: {
+        t_incidencias: true,
+      },
+    });
+
+    if (!incidenciaAsignada) {
+      return res.status(404).json({ message: "Incidencia no encontrada o no asignada al usuario autenticado" });
+    }
+
+    // Actualizar el estado de la incidencia a 4
     const incidenciaActualizada = await prisma.t_incidencias.update({
       where: {
         ct_cod_incidencia,
@@ -255,6 +280,7 @@ export const actualizarEstadoReparacion = async (req, res) => {
         cn_cod_estado: 4,
       },
     });
+
     return res.status(200).json({
       message: "Estado de la incidencia actualizado correctamente",
       incidencia: incidenciaActualizada,
@@ -264,3 +290,6 @@ export const actualizarEstadoReparacion = async (req, res) => {
     return res.status(500).json({ message: "Error interno del servidor" });
   }
 };
+
+
+
