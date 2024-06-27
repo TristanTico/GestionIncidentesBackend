@@ -101,6 +101,9 @@ export const getIncidenciasXusuario = async (req, res) => {
       where: {
         cn_cod_usuario: req.usuario.id,
       },
+      include: {
+        t_estados: true,
+      },
     });
     if (!incidencias) {
       return res.status(400).json({ message: "No hay incidencias" });
