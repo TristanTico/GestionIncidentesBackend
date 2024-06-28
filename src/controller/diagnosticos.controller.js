@@ -2,6 +2,7 @@ import { prisma } from "../db.js";
 
 export const crearDiagnostico = async (req, res) => {
   try {
+    console.log(req.files);
     const cn_cod_usuario = req.usuario.id;
 
     const nuevoDiagnostico = await prisma.t_diagnosticos.create({
@@ -20,6 +21,19 @@ export const crearDiagnostico = async (req, res) => {
           cn_cod_usuario,
         },
       });
+
+      const diag = req.files;
+      console.log(diag);
+      if (diag && diag.length > 0) {
+        await Promise.all(diag.map(async (image) => {
+          await prisma.t_imagenesXdiagnostico.create({
+            data: {
+              cn_cod_diagnostico: nuevoDiagnostico.cn_cod_diagnostico,
+              ct_urlImagen: image.path,
+            }
+          });
+        }));
+      }
 
     res.status(201).json({
       message: "Diagnóstico creado exitosamente",
@@ -101,3 +115,30 @@ export const actualizarEstadoTerminado = async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
+export const getImagenesXdiagnostico = async (req, res) => {
+  try {
+    const { cn_cod_diagnostico } = req.params;
+    const diagnosticoId = parseInt(cn_cod_diagnostico, 10); 
+    const imagenes = await prisma.t_imagenesXdiagnostico.findMany({
+      where: {
+        cn_cod_diagnostico: diagnosticoId
+      },
+      select: {
+        ct_urlImagen: true
+      }
+    });
+
+    if (!imagenes || imagenes.length === 0) {
+      return res.status(400).json({ message: "Este diagnostico no tiene imágenes" });
+    }
+
+    const imagenesUrls = imagenes.map(imagen => imagen.ct_urlImagen);
+    return res.status(200).json(imagenesUrls);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Error al obtener imágenes" });
+  }
+}
+
+

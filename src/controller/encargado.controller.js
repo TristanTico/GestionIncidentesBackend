@@ -49,7 +49,6 @@ export const asignarIncidencia = async (req, res) => {
       }
     });
     */
-    
 
     res.status(201).json({
       message: "Asignacion creada exitosamente",
@@ -85,3 +84,89 @@ export const getTecnicos = async (req, res) => {
     console.log(error);
   }
 };
+
+
+export const getCargaTrabajo = async (req, res) => {
+  try {
+    // Obtener los usuarios con rol de técnico (rol 4) y sus asignaciones de incidencias
+    const tecnicos = await prisma.t_rolesXusuarios.findMany({
+      where: {
+        cn_cod_rol: 4,
+      },
+      include: {
+        t_usuarios: {
+          select: {
+            ct_nombre: true,
+            t_asignacionesIncidencias: {
+              include: {
+                t_incidencias: {
+                  include: {
+                    t_estados: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!tecnicos || tecnicos.length === 0) {
+      return res.status(400).json({ message: "No hay usuarios con rol de técnico" });
+    }
+
+    // Procesar los datos
+    const result = tecnicos
+      .filter((tecnico) => tecnico.t_usuarios.t_asignacionesIncidencias.length > 0) // Filtrar solo los técnicos con asignaciones de incidencias
+      .map((tecnico) => {
+        const categorias = {};
+
+        tecnico.t_usuarios.t_asignacionesIncidencias.forEach((asignacion) => {
+          const incidencia = asignacion.t_incidencias;
+
+          // Si la categoría no existe en el objeto categorías, se inicializa
+          if (!categorias[incidencia.ct_categoria]) {
+            categorias[incidencia.ct_categoria] = {
+              categoria: incidencia.ct_categoria || "Sin categoría",
+              trabajoPendiente: [],
+              trabajoTerminado: [],
+              sumatoriaDuracionPendiente: 0,
+              sumatoriaDuracionTerminado: 0,
+            };
+          }
+
+          // Determinar si la incidencia está terminada o pendiente
+          const duracion = incidencia.cn_duracion || 0;
+          if (incidencia.t_estados.cn_cod_estado === 9) {
+            categorias[incidencia.ct_categoria].trabajoTerminado.push({
+              codigo: incidencia.ct_cod_incidencia,
+              titulo: incidencia.ct_titulo,
+              duracion: duracion,
+            });
+            categorias[incidencia.ct_categoria].sumatoriaDuracionTerminado += duracion;
+          } else {
+            categorias[incidencia.ct_categoria].trabajoPendiente.push({
+              codigo: incidencia.ct_cod_incidencia,
+              titulo: incidencia.ct_titulo,
+              duracion: duracion,
+            });
+            categorias[incidencia.ct_categoria].sumatoriaDuracionPendiente += duracion;
+          }
+        });
+
+        return {
+          usuario: {
+            nombre: tecnico.t_usuarios.ct_nombre,
+          },
+          categorias: Object.values(categorias), // Convertir el objeto en un array de categorías
+        };
+      });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al obtener los datos de técnicos e incidencias" });
+  }
+};
+
+

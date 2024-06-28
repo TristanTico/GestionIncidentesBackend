@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   asignarIncidencia,
+  getCargaTrabajo,
   getTecnicos,
 } from "../controller/encargado.controller.js";
 
@@ -14,5 +15,6 @@ router.post(
   asignarIncidencia
 );
 router.get("/getTecnicos", verifyToken, getTecnicos);
+router.get("/getReporteCargaTrabajo", verifyToken, getCargaTrabajo);
 
 export default router;

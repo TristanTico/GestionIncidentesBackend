@@ -64,6 +64,8 @@ export const crearIncidencia = async (req, res) => {
 
 export const crearIncidencia = async (req, res) => {
   try {
+    console.log(req.files);
+    console.log(req.body);
     const usuario = await prisma.t_usuarios.findFirst({
       where: { cn_cod_usuario: req.usuario.id },
     });
@@ -83,6 +85,22 @@ export const crearIncidencia = async (req, res) => {
         cn_cod_estado: 1,
       },
     });
+
+    const images = req.files;
+    if (images && images.length > 0) {
+      await Promise.all(images.map(async (image) => {
+        await prisma.t_imagenesXincidencias.create({
+          data: {
+            ct_cod_incidencia: nuevaIncidencia.ct_cod_incidencia,
+            ct_urlImagen: image.path,
+          }
+        });
+      }));
+    }
+
+    console.log(images);
+
+
     return res.status(201).json({
       message: "Incidencia creada exitosamente",
       incidencia: nuevaIncidencia,
@@ -293,6 +311,44 @@ export const actualizarEstadoReparacion = async (req, res) => {
     return res.status(500).json({ message: "Error interno del servidor" });
   }
 };
+
+export const getImagenesXIncidencia = async (req, res) => {
+  try {
+    const { ct_cod_incidencia } = req.params;
+    const imagenes = await prisma.t_imagenesXincidencias.findMany({
+      where: {
+        ct_cod_incidencia
+      },
+      select: {
+        ct_urlImagen: true
+      }
+    });
+
+    if (!imagenes || imagenes.length === 0) {
+      return res.status(400).json({ message: "Esta incidencia no tiene imágenes" });
+    }
+
+    const imagenesUrls = imagenes.map(imagen => imagen.ct_urlImagen);
+    return res.status(200).json(imagenesUrls);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Error al obtener imágenes" });
+  }
+}
+
+
+
+export const getTablaImagenes = async (req, res) => {
+  try {
+    const imagenes = await prisma.t_imagenesXincidencias.findMany();
+    if (!imagenes || imagenes.length === 0) {
+      return res.status(400).json({ message: "No hay imagenes" });
+    }
+    return res.status(200).json(imagenes);
+  } catch (error) {
+    console.log(error);
+  }
+}
 
 
 
