@@ -1,9 +1,12 @@
 import { prisma } from "../db.js";
 import { EmailAsignacion } from "../mailConfig.js";
 
+
+
 export const asignarIncidencia = async (req, res) => {
   try {
     const { ct_cod_incidencia } = req.params;
+    const usuarioAutenticado = req.usuario.id;
 
     const incidenciaActualizada = await prisma.t_incidencias.update({
       where: {
@@ -32,6 +35,27 @@ export const asignarIncidencia = async (req, res) => {
       skipDuplicates: true,
     });
 
+    // Registrar las acciones en la bitácora
+    for (const usuario of usuariosData) {
+      await prisma.t_bitacoraAcciones.create({
+        data: {
+          ct_cod_bitacora_acciones: new Date().toISOString(), // fecha y hora actuales
+          cn_cod_usuario: usuario.cn_cod_usuario,
+          ct_referencia: `asignando-${ct_cod_incidencia}-${usuario.cn_cod_usuario}-${incidenciaActualizada.ct_afectacion}-${incidenciaActualizada.ct_prioridad}-${incidenciaActualizada.ct_riesgo}`,
+        },
+      });
+    }
+
+    const bitacoraEstado = await prisma.t_bitacoraEstados.create({
+      data: {
+        ct_fecha_cambio : new Date().toISOString(),
+        cn_cod_usuario : usuarioAutenticado,
+        ct_cod_incidencia : ct_cod_incidencia,
+        cn_estadoViejo: 1,
+        cn_estadoNuevo: incidenciaActualizada.cn_cod_estado
+      }
+    })
+
     /*
     usuariosData.forEach((usuario) => {
       try {
@@ -54,12 +78,15 @@ export const asignarIncidencia = async (req, res) => {
       message: "Asignacion creada exitosamente",
       incidencia: incidenciaActualizada,
       asignaciones: asignaciones,
+      bitacoraEstado: bitacoraEstado
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Error al crear la asignacion" });
   }
 };
+
+
 
 export const getTecnicos = async (req, res) => {
   try {

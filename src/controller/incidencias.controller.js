@@ -64,8 +64,6 @@ export const crearIncidencia = async (req, res) => {
 
 export const crearIncidencia = async (req, res) => {
   try {
-    console.log(req.files);
-    console.log(req.body);
     const usuario = await prisma.t_usuarios.findFirst({
       where: { cn_cod_usuario: req.usuario.id },
     });
@@ -98,12 +96,19 @@ export const crearIncidencia = async (req, res) => {
       }));
     }
 
-    console.log(images);
-
+    // Registrar la acción en la bitácora
+    const bitacoraAccion = await prisma.t_bitacoraAcciones.create({
+      data: {
+        ct_cod_bitacora_acciones: new Date().toISOString(), // fecha y hora actuales
+        cn_cod_usuario: usuario.cn_cod_usuario,
+        ct_referencia: `creandoInci-${nuevaIncidencia.ct_cod_incidencia}-${usuario.cn_cod_usuario}`,
+      },
+    });
 
     return res.status(201).json({
       message: "Incidencia creada exitosamente",
       incidencia: nuevaIncidencia,
+      bitacoraAccion: bitacoraAccion,
     });
   } catch (error) {
     return res.status(500).json({
@@ -112,6 +117,7 @@ export const crearIncidencia = async (req, res) => {
     });
   }
 };
+
 
 export const getIncidenciasXusuario = async (req, res) => {
   try {
@@ -200,9 +206,14 @@ export const getIncidenciasAsignadas = async (req, res) => {
       include: {
         t_asignacionesIncidencias: {
           include: {
-            t_incidencias: true,
+            t_incidencias: {
+              include: {
+                t_estados: true,
+              }
+            },
           },
         },
+        
       },
     });
 
@@ -229,6 +240,7 @@ export const getIncidenciasAsignadas = async (req, res) => {
 export const actualizarEstadoRevision = async (req, res) => {
   try {
     const { ct_cod_incidencia } = req.params;
+    const usuariosId = req.usuario.id;
     const incidencia = await prisma.t_incidencias.findFirst({
       where: {
         ct_cod_incidencia,
@@ -245,9 +257,21 @@ export const actualizarEstadoRevision = async (req, res) => {
         cn_cod_estado: 3,
       },
     });
+
+    const bitacoraEstado = await prisma.t_bitacoraEstados.create({
+      data: {
+        ct_fecha_cambio : new Date().toISOString(),
+        cn_cod_usuario : usuariosId,
+        ct_cod_incidencia : ct_cod_incidencia,
+        cn_estadoViejo: 2,
+        cn_estadoNuevo: incidenciaActualizada.cn_cod_estado
+      }
+    })
+
     return res.status(200).json({
       message: "Estado de la incidencia actualizado correctamente",
       incidencia: incidenciaActualizada,
+      bitacoraEstado: bitacoraEstado
     });
   } catch (error) {
     console.error(error);
@@ -302,9 +326,20 @@ export const actualizarEstadoReparacion = async (req, res) => {
       },
     });
 
+    const bitacoraEstado = await prisma.t_bitacoraEstados.create({
+      data: {
+        ct_fecha_cambio : new Date().toISOString(),
+        cn_cod_usuario : usuariosId,
+        ct_cod_incidencia : ct_cod_incidencia,
+        cn_estadoViejo: 3,
+        cn_estadoNuevo: incidenciaActualizada.cn_cod_estado
+      }
+    })
+
     return res.status(200).json({
       message: "Estado de la incidencia actualizado correctamente",
       incidencia: incidenciaActualizada,
+      bitacoraEstado: bitacoraEstado,
     });
   } catch (error) {
     console.error(error);

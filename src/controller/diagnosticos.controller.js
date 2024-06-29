@@ -2,7 +2,7 @@ import { prisma } from "../db.js";
 
 export const crearDiagnostico = async (req, res) => {
   try {
-    console.log(req.files);
+    
     const cn_cod_usuario = req.usuario.id;
 
     const nuevoDiagnostico = await prisma.t_diagnosticos.create({
@@ -22,29 +22,39 @@ export const crearDiagnostico = async (req, res) => {
         },
       });
 
-      const diag = req.files;
-      console.log(diag);
-      if (diag && diag.length > 0) {
-        await Promise.all(diag.map(async (image) => {
-          await prisma.t_imagenesXdiagnostico.create({
-            data: {
-              cn_cod_diagnostico: nuevoDiagnostico.cn_cod_diagnostico,
-              ct_urlImagen: image.path,
-            }
-          });
-        }));
-      }
+    const diag = req.files;
+    if (diag && diag.length > 0) {
+      await Promise.all(diag.map(async (image) => {
+        await prisma.t_imagenesXdiagnostico.create({
+          data: {
+            cn_cod_diagnostico: nuevoDiagnostico.cn_cod_diagnostico,
+            ct_urlImagen: image.path,
+          }
+        });
+      }));
+    }
+
+    // Registrar la acción en la bitácora
+    const bitacoraAccion = await prisma.t_bitacoraAcciones.create({
+      data: {
+        ct_cod_bitacora_acciones: new Date().toISOString(), // fecha y hora actuales
+        cn_cod_usuario,
+        ct_referencia: `creandoDiag-${req.params.ct_cod_incidencia}-${cn_cod_usuario}-${req.body.cn_tiempoSolucion}`,
+      },
+    });
 
     res.status(201).json({
       message: "Diagnóstico creado exitosamente",
       diagnostico: nuevoDiagnostico,
       diagnosticoXIncidencia: nuevoDiagnosticoXincidencia,
+      bitacoraAccion: bitacoraAccion,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Error al crear el diagnóstico" });
   }
 };
+
 
 export const getDiagnosticos = async (req, res) => {
   try {

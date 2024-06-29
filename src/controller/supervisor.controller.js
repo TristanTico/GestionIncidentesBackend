@@ -3,6 +3,7 @@ import { prisma } from "../db.js";
 export const actualizarEstadoAprobado = async (req, res) => {
   try {
     const { ct_cod_incidencia } = req.params;
+    const usuariosId = req.usuario.id;
     const incidencia = await prisma.t_incidencias.findFirst({
       where: {
         ct_cod_incidencia,
@@ -19,9 +20,21 @@ export const actualizarEstadoAprobado = async (req, res) => {
         cn_cod_estado: 7,
       },
     });
+
+    const bitacoraEstado = await prisma.t_bitacoraEstados.create({
+      data: {
+        ct_fecha_cambio : new Date().toISOString(),
+        cn_cod_usuario : usuariosId,
+        ct_cod_incidencia : ct_cod_incidencia,
+        cn_estadoViejo: incidencia.cn_cod_estado,
+        cn_estadoNuevo: incidenciaActualizada.cn_cod_estado
+      }
+    })
+
     return res.status(200).json({
       message: "Estado de la incidencia actualizado correctamente",
       incidencia: incidenciaActualizada,
+      bitacoraEstado: bitacoraEstado
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -31,6 +44,7 @@ export const actualizarEstadoAprobado = async (req, res) => {
 export const actualizarEstadoRechazado = async (req, res) => {
   try {
     const { ct_cod_incidencia } = req.params;
+    const usuariosId = req.usuario.id;
     const incidencia = await prisma.t_incidencias.findFirst({
       where: {
         ct_cod_incidencia,
@@ -47,9 +61,19 @@ export const actualizarEstadoRechazado = async (req, res) => {
         cn_cod_estado: 8,
       },
     });
+    const bitacoraEstado = await prisma.t_bitacoraEstados.create({
+      data: {
+        ct_fecha_cambio : new Date().toISOString(),
+        cn_cod_usuario : usuariosId,
+        ct_cod_incidencia : ct_cod_incidencia,
+        cn_estadoViejo: incidencia.cn_cod_estado,
+        cn_estadoNuevo: incidenciaActualizada.cn_cod_estado
+      }
+    })
     return res.status(200).json({
       message: "Estado de la incidencia actualizado correctamente",
       incidencia: incidenciaActualizada,
+      bitacoraEstado: bitacoraEstado
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -59,6 +83,7 @@ export const actualizarEstadoRechazado = async (req, res) => {
 export const actualizarEstadoCerrado = async (req, res) => {
   try {
     const { ct_cod_incidencia } = req.params;
+    const usuariosId = req.usuario.id;
     const incidencia = await prisma.t_incidencias.findFirst({
       where: {
         ct_cod_incidencia,
@@ -76,9 +101,20 @@ export const actualizarEstadoCerrado = async (req, res) => {
         cn_cod_estado: 9,
       },
     });
+
+    const bitacoraEstado = await prisma.t_bitacoraEstados.create({
+      data: {
+        ct_fecha_cambio : new Date().toISOString(),
+        cn_cod_usuario : usuariosId,
+        ct_cod_incidencia : ct_cod_incidencia,
+        cn_estadoViejo: incidencia.cn_cod_estado,
+        cn_estadoNuevo: incidenciaActualizada.cn_cod_estado
+      }
+    })
     return res.status(200).json({
       message: "Estado de la incidencia actualizado correctamente",
       incidencia: incidenciaActualizada,
+      bitacoraEstado: bitacoraEstado
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -93,6 +129,9 @@ export const getIncidenciasTerminadas = async (req, res) => {
         cn_cod_estado: {
           in: estadosTerminados,
         },
+      },
+      include: {
+        t_estados: true,
       },
     });
     if (!incidenciasTerminadas || incidenciasTerminadas.length === 0) {
